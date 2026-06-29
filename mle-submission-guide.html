@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Amazon Business | MLE Request Builder</title>
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #232F3E; background: #F5F5F5; }
+    .header { background: #232F3E; color: #FFF; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .header .brand { font-size: 18px; font-weight: 700; color: #E47911; }
+    .header .brand span { color: #FFF; font-weight: 400; }
+    .header .subtitle { font-size: 12px; color: #AAA; }
+
+    .progress-bar { background: #FFF; border-bottom: 1px solid #DDD; padding: 14px 24px; display: flex; align-items: center; justify-content: center; gap: 0; }
+    .progress-step { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 4px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .progress-step.completed { color: #067D62; }
+    .progress-step.current { color: #E47911; font-weight: 700; }
+    .progress-step.future { color: #999; }
+    .progress-connector { width: 40px; height: 2px; background: #DDD; }
+    .progress-connector.done { background: #067D62; }
+
+    .container { max-width: 1200px; margin: 24px auto; padding: 0 24px; display: flex; gap: 24px; align-items: flex-start; }
+    .sidebar { width: 300px; flex-shrink: 0; position: sticky; top: 24px; }
+    .sidebar-card { background: #FFF; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 16px; }
+    .sidebar-card h3 { font-size: 15px; margin-bottom: 8px; color: #232F3E; }
+    .sidebar-card p { font-size: 13px; color: #555; margin-bottom: 10px; line-height: 1.6; }
+    .sidebar-card ul { font-size: 13px; color: #555; margin: 0 0 10px 16px; line-height: 1.8; }
+    .sidebar-card ul li { margin-bottom: 2px; }
+    .sidebar-checklist { list-style: none; margin: 0; padding: 0; }
+    .sidebar-checklist li { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; font-size: 13px; color: #444; border-bottom: 1px solid #F0F0F0; }
+    .sidebar-checklist li:last-child { border-bottom: none; }
+    .sidebar-checklist li .check-icon { flex-shrink: 0; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; background: #E8F5E9; border-radius: 50%; font-size: 10px; margin-top: 2px; }
+    .main-content { flex: 1; min-width: 0; }
+    .card { background: #FFF; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 32px; margin-bottom: 24px; }
+    .card h2 { font-size: 20px; margin-bottom: 6px; color: #232F3E; }
+    .card .desc { color: #555; margin-bottom: 24px; font-size: 14px; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 14px; }
+    .form-group label .req { color: #D13212; margin-left: 2px; }
+    .form-group label .hint-inline { color: #888; font-weight: 400; font-size: 12px; margin-left: 6px; }
+    .form-group input[type="text"], .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #CCC; border-radius: 4px; font-size: 14px; min-height: 44px; transition: border-color 0.2s; }
+    .form-group textarea { min-height: 120px; resize: vertical; font-family: inherit; }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #E47911; box-shadow: 0 0 0 2px rgba(228,121,17,0.15); }
+    .form-group .hint { color: #888; font-size: 12px; margin-top: 4px; }
+    .form-group .err { color: #D13212; font-size: 13px; margin-top: 4px; display: none; }
+    .form-group.has-error input, .form-group.has-error select, .form-group.has-error textarea { border-color: #D13212; }
+    .form-group.has-error .err { display: block; }
+
+    .radio-group { display: flex; gap: 16px; margin-top: 6px; }
+    .radio-option { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border: 2px solid #E0E0E0; border-radius: 6px; cursor: pointer; transition: all 0.2s; min-height: 44px; }
+    .radio-option:hover { border-color: #E47911; }
+    .radio-option.selected { border-color: #E47911; background: #FFF9F0; }
+    .radio-option input { width: 18px; height: 18px; }
+    .radio-option label { cursor: pointer; font-weight: 500; }
+
+    .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 24px; border: none; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; gap: 6px; }
+    .btn-primary { background: #E47911; color: #FFF; }
+    .btn-primary:hover { background: #C76A0E; }
+    .btn-primary:disabled { background: #ccc; color: #888; cursor: not-allowed; }
+    .btn-secondary { background: #E0E0E0; color: #232F3E; }
+    .btn-secondary:hover { background: #D0D0D0; }
+    .btn-success { background: #067D62; color: #FFF; }
+    .btn-success:hover { background: #055D4C; }
+    .btn-sm { min-height: 34px; padding: 6px 14px; font-size: 13px; }
+
+    .footer-btns { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 20px; border-top: 1px solid #EEE; }
+
+    /* Step 2 table */
+    .le-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    .le-table th { background: #232F3E; color: #FFF; padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; }
+    .le-table td { padding: 8px 10px; border-bottom: 1px solid #EEE; vertical-align: middle; }
+    .le-table tr:hover { background: #FAFAFA; }
+    .le-table input, .le-table select { width: 100%; padding: 6px 8px; border: 1px solid #DDD; border-radius: 4px; font-size: 13px; min-height: 36px; }
+    .le-table input:focus, .le-table select:focus { outline: none; border-color: #E47911; }
+
+    .apply-all-bar { background: #F0F7FF; border: 1px solid #B3D4FC; border-radius: 6px; padding: 14px 18px; margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .apply-all-bar label { font-weight: 600; font-size: 13px; white-space: nowrap; }
+    .apply-all-bar input, .apply-all-bar select { padding: 6px 10px; border: 1px solid #CCC; border-radius: 4px; font-size: 13px; min-height: 34px; }
+    .apply-all-bar .btn { min-height: 34px; padding: 6px 14px; }
+
+    /* Output */
+    .output-card { background: #F0FFF0; border: 2px solid #4CAF50; border-radius: 8px; padding: 24px; text-align: center; }
+    .output-card h2 { color: #2E7D32; margin-bottom: 10px; }
+    .output-card p { color: #444; margin-bottom: 16px; }
+    .output-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 16px; }
+
+    .recap-box { background: #F9F9F9; border: 1px solid #E0E0E0; border-radius: 6px; padding: 18px; margin-bottom: 20px; }
+    .recap-box .field { margin-bottom: 8px; font-size: 14px; }
+    .recap-box .field strong { min-width: 160px; display: inline-block; color: #555; }
+
+    .admin-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .admin-pill { background: #E8F5E9; border: 1px solid #A5D6A7; border-radius: 16px; padding: 4px 12px; font-size: 12px; font-family: monospace; }
+
+    .info-banner { background: #FFF9F0; border: 1px solid #FFCC80; border-radius: 6px; padding: 14px 18px; margin-bottom: 20px; font-size: 13px; display: flex; align-items: flex-start; gap: 10px; }
+    .info-banner .icon { font-size: 18px; flex-shrink: 0; }
+
+    .psr-link-box { background: #F0F7FF; border: 1px solid #B3D4FC; border-radius: 6px; padding: 16px; margin-top: 16px; }
+    .psr-link-box a { color: #0073BB; font-weight: 600; word-break: break-all; }
+
+    /* Admin notice */
+    .admin-notice { background: #F0F7FF; border: 1px solid #B3D4FC; border-radius: 4px; padding: 8px 12px; font-size: 12px; color: #444; margin-top: 8px; }
+    .admin-notice strong { color: #0D47A1; }
+
+    @media (max-width: 768px) {
+      .container { padding: 0 12px; flex-direction: column; }
+      .sidebar { width: 100%; position: static; }
+      .card { padding: 20px; }
+      .radio-group { flex-direction: column; }
+      .apply-all-bar { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<header class="header">
+  <div><div class="brand">Amazon Business <span>| MLE Request Builder</span></div></div>
+  <div class="subtitle">Self-Service Tool for Account Executives</div>
+</header>
+
+<nav class="progress-bar" id="progressBar"></nav>
+
+<div class="container">
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-card">
+      <h3>📘 What is an MLE?</h3>
+      <p>A <strong>Multi-Legal Entity (MLE)</strong> setup allows a single Amazon Business account to operate with multiple legal entities — such as divisions, subsidiaries, or cost centers — under one umbrella.</p>
+      <p>Each Legal Entity gets its own billing profile and can have its own Pay By Invoice (PBI) credit line.</p>
+    </div>
+
+    <div class="sidebar-card">
+      <h3>✨ Benefits of MLEs</h3>
+      <ul>
+        <li>Separate invoicing per division or subsidiary</li>
+        <li>Individual Lines of Credit (LOC) per LE</li>
+        <li>Centralized purchasing visibility for the parent account</li>
+        <li>Streamlined compliance and cost allocation</li>
+        <li>Each LE can have its own payment terms</li>
+        <li>Simplified onboarding for large organizations</li>
+      </ul>
+    </div>
+
+    <div class="sidebar-card">
+      <h3>✅ Before You Start — Checklist</h3>
+      <ul class="sidebar-checklist">
+        <li><span class="check-icon">✓</span> Customer has an active Amazon Business account</li>
+        <li><span class="check-icon">✓</span> You have the Salesforce Opportunity URL/ID</li>
+        <li><span class="check-icon">✓</span> You know the admin email(s) on the account (must be active admins)</li>
+        <li><span class="check-icon">✓</span> You have the list of Legal Entity names to create</li>
+        <li><span class="check-icon">✓</span> You know whether PBI is required</li>
+        <li><span class="check-icon">✓</span> If PBI: LOC amount and Net Terms are confirmed with the customer</li>
+        <li><span class="check-icon">✓</span> No duplicate LE names already exist on the account</li>
+        <li><span class="check-icon">✓</span> All LEs are for the same marketplace (US, CA, or MX)</li>
+      </ul>
+    </div>
+  </aside>
+
+  <!-- MAIN WIZARD -->
+  <div class="main-content">
+    <div id="wizardContent"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════
+var state = {
+  step: 0,
+  aeAlias: '',
+  marketplace: 'US',
+  opportunityId: '',
+  opportunityUrl: '',
+  leNames: [],
+  pbiRequired: null, // true/false
+  // Admin emails (free text entry by AE)
+  selectedAdmins: [],   // emails the AE has typed/pasted
+  // Account info
+  accountName: '',
+  baid: '',
+  // Step 2 (PBI = Yes)
+  leDetails: [] // { name, loc, netTerms, autoIncrease }
+};
+
+var STEPS_NO_PBI = [
+  { id: 'input', label: '1. Enter Details' },
+  { id: 'output', label: '2. Download & Submit' }
+];
+
+var STEPS_PBI = [
+  { id: 'input', label: '1. Enter Details' },
+  { id: 'pbi', label: '2. PBI Details' },
+  { id: 'output', label: '3. Download & Submit' }
+];
+
+function getSteps() { return state.pbiRequired ? STEPS_PBI : STEPS_NO_PBI; }
+
+// ══════════════════════════════════════════════════════════════════
+// RENDER ENGINE
+// ══════════════════════════════════════════════════════════════════
+function render() {
+  renderProgress();
+  renderStep();
+}
+
+function renderProgress() {
+  var bar = document.getElementById('progressBar');
+  var steps = getSteps();
+  bar.innerHTML = '';
+  steps.forEach(function(s, i) {
+    if (i > 0) {
+      var conn = document.createElement('div');
+      conn.className = 'progress-connector' + (i <= state.step ? ' done' : '');
+      bar.appendChild(conn);
+    }
+    var el = document.createElement('div');
+    el.className = 'progress-step ' + (i < state.step ? 'completed' : i === state.step ? 'current' : 'future');
+    el.textContent = (i < state.step ? '✓ ' : i === state.step ? '● ' : '○ ') + s.label;
+    bar.appendChild(el);
+  });
+}
+
+function renderStep() {
+  var el = document.getElementById('wizardContent');
+  var steps = getSteps();
+  var stepId = steps[state.step].id;
+  if (stepId === 'input') renderInputStep(el);
+  else if (stepId === 'pbi') renderPBIStep(el);
+  else if (stepId === 'output') renderOutputStep(el);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// STEP 1: INPUT
+// ══════════════════════════════════════════════════════════════════
+function renderInputStep(el) {
+  el.innerHTML =
+    '<div class="card">' +
+    '  <h2>📋 MLE Request Details</h2>' +
+    '  <p class="desc">Provide the information below. Use the "Look Up Admins" button to view the Account\'s contacts in Salesforce.</p>' +
+
+    '  <div class="form-group" id="fg-alias">' +
+    '    <label>Employee Alias <span class="req">*</span></label>' +
+    '    <input type="text" id="inp-alias" placeholder="e.g. jdoe" value="' + esc(state.aeAlias) + '" />' +
+    '    <div class="hint">Your Amazon alias (without @amazon.com)</div>' +
+    '    <div class="err">Employee alias is required</div>' +
+    '  </div>' +
+
+    '  <div class="form-group" id="fg-marketplace">' +
+    '    <label>Marketplace <span class="req">*</span></label>' +
+    '    <select id="inp-marketplace">' +
+    '      <option value="US"' + (state.marketplace === 'US' ? ' selected' : '') + '>US (amazon.com)</option>' +
+    '      <option value="CA"' + (state.marketplace === 'CA' ? ' selected' : '') + '>CA (amazon.ca)</option>' +
+    '      <option value="MX"' + (state.marketplace === 'MX' ? ' selected' : '') + '>MX (amazon.com.mx)</option>' +
+    '    </select>' +
+    '  </div>' +
+
+    '  <div class="form-group" id="fg-opp">' +
+    '    <label>Salesforce Opportunity <span class="req">*</span><span class="hint-inline">URL or Opportunity ID</span></label>' +
+    '    <input type="text" id="inp-opp" placeholder="e.g. https://amazonbusiness.lightning.force.com/lightning/r/Opportunity/006ar00000FsQEbAAN/view" value="' + esc(state.opportunityUrl || state.opportunityId) + '" />' +
+    '    <div class="hint">Enter the Opportunity URL or ID linked to this MLE request</div>' +
+    '    <div class="err">Salesforce Opportunity URL or ID is required</div>' +
+    '  </div>' +
+
+    '  <div class="form-group" id="fg-admin">' +
+    '    <label>Admin Email(s) <span class="req">*</span><span class="hint-inline">Comma-separated, up to 3</span></label>' +
+    '    <div style="display:flex;gap:8px;align-items:flex-start;">' +
+    '      <input type="text" id="inp-admin" style="flex:1;" placeholder="e.g. admin@company.com, finance@company.com" value="' + esc(state.selectedAdmins.join(', ')) + '" />' +
+    '      <button class="btn btn-secondary" style="white-space:nowrap;min-height:44px;font-size:13px;" onclick="openLookupAdmins()">🔍 Look Up Admins</button>' +
+    '    </div>' +
+    '    <div class="admin-notice">' +
+    '      <strong>ℹ️ Note:</strong> Only <strong>active admin emails</strong> can be used to create MLEs. ' +
+    '      Additional admins can always be added to the account after MLE creation.' +
+    '    </div>' +
+    '    <div class="err">Please enter at least one admin email</div>' +
+    '  </div>' +
+
+    '  <div class="form-group" id="fg-les">' +
+    '    <label>Legal Entity Names <span class="req">*</span><span class="hint-inline">One per line (max 350 characters each)</span></label>' +
+    '    <textarea id="inp-les" placeholder="Division East\nDivision West\nCorporate HQ">' + esc(state.leNames.join('\n')) + '</textarea>' +
+    '    <div class="hint">Enter each Legal Entity name on a new line. You can also paste from a spreadsheet column.</div>' +
+    '    <div class="err">At least one Legal Entity name is required</div>' +
+    '  </div>' +
+
+    '  <div class="form-group" id="fg-pbi">' +
+    '    <label>Is PBI (Pay By Invoice) required for these LEs? <span class="req">*</span></label>' +
+    '    <div class="radio-group">' +
+    '      <div class="radio-option' + (state.pbiRequired === false ? ' selected' : '') + '" onclick="selectPBI(false)">' +
+    '        <input type="radio" name="pbi" value="no"' + (state.pbiRequired === false ? ' checked' : '') + ' />' +
+    '        <label>No — Create LEs only</label>' +
+    '      </div>' +
+    '      <div class="radio-option' + (state.pbiRequired === true ? ' selected' : '') + '" onclick="selectPBI(true)">' +
+    '        <input type="radio" name="pbi" value="yes"' + (state.pbiRequired === true ? ' checked' : '') + ' />' +
+    '        <label>Yes — PBI + LOC needed</label>' +
+    '      </div>' +
+    '    </div>' +
+    '    <div class="err">Please select whether PBI is required</div>' +
+    '  </div>' +
+
+    '  <div class="footer-btns">' +
+    '    <div></div>' +
+    '    <button class="btn btn-primary" onclick="submitStep1()">Next →</button>' +
+    '  </div>' +
+    '</div>';
+}
+
+function selectPBI(val) {
+  state.pbiRequired = val;
+  document.querySelectorAll('.radio-option').forEach(function(el) { el.classList.remove('selected'); });
+  event.currentTarget.classList.add('selected');
+  event.currentTarget.querySelector('input').checked = true;
+}
+
+// ── ADMIN LOOKUP POPUP ────────────────────────────────────────
+function openLookupAdmins() {
+  var opp = document.getElementById('inp-opp').value.trim();
+  var oppId = extractOpportunityId(opp);
+
+  // Build the Salesforce URL — open Opportunity page so AE can navigate to Account > Contacts
+  var sfUrl;
+  if (oppId) {
+    sfUrl = 'https://amazonbusiness.lightning.force.com/lightning/r/Opportunity/' + oppId + '/view';
+  } else {
+    sfUrl = 'https://amazonbusiness.lightning.force.com/lightning/o/Opportunity/home';
+  }
+
+  // Show popup with instructions
+  var popup = document.createElement('div');
+  popup.id = 'adminLookupPopup';
+  popup.setAttribute('style',
+    'position:fixed;top:0;left:0;width:100%;height:100%;z-index:10000;' +
+    'background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;');
+
+  popup.innerHTML =
+    '<div style="background:#FFF;border-radius:12px;max-width:560px;width:90%;padding:28px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">' +
+    '  <h3 style="font-size:18px;margin-bottom:12px;color:#232F3E;">🔍 Look Up Admin Emails</h3>' +
+    '  <p style="font-size:14px;color:#555;margin-bottom:16px;">To find the correct admin email(s), navigate to the Account\'s <strong>Contacts</strong> in Salesforce and look for contacts with an Admin role.</p>' +
+    '  <div style="background:#F0F7FF;border:1px solid #B3D4FC;border-radius:6px;padding:14px;margin-bottom:16px;">' +
+    '    <p style="font-size:13px;margin-bottom:10px;"><strong>Steps:</strong></p>' +
+    '    <ol style="font-size:13px;color:#444;margin-left:18px;line-height:1.8;">' +
+    '      <li>Click "Open in Salesforce" below</li>' +
+    '      <li>On the Opportunity page, click the <strong>Account Name</strong> link at the top</li>' +
+    '      <li>On the Account page, scroll to the <strong>Contacts</strong> related list</li>' +
+    '      <li>Find the contact(s) with an active <strong>Admin</strong> role</li>' +
+    '      <li>Copy their email address(es) back here</li>' +
+    '    </ol>' +
+    '  </div>' +
+    '  <div style="background:#FFF9F0;border:1px solid #FFCC80;border-radius:6px;padding:12px;margin-bottom:18px;font-size:12px;color:#555;">' +
+    '    <strong>⚠️ Remember:</strong> Only <strong>active admin emails</strong> on the business account can be used. ' +
+    '    If the customer needs a new admin, they must be added to the AB account first.' +
+    '  </div>' +
+    '  <div style="display:flex;gap:10px;justify-content:space-between;">' +
+    '    <button class="btn btn-secondary" onclick="closeAdminPopup()">Close</button>' +
+    '    <a href="' + sfUrl + '" target="_blank" class="btn btn-primary" style="text-decoration:none;" onclick="closeAdminPopup()">Open in Salesforce ↗</a>' +
+    '  </div>' +
+    '</div>';
+
+  popup.addEventListener('click', function(e) { if (e.target === popup) closeAdminPopup(); });
+  document.body.appendChild(popup);
+}
+
+function closeAdminPopup() {
+  var popup = document.getElementById('adminLookupPopup');
+  if (popup) popup.remove();
+}
+
+function submitStep1() {
+  var valid = true;
+
+  // Alias
+  var alias = document.getElementById('inp-alias').value.trim();
+  if (!alias) { document.getElementById('fg-alias').classList.add('has-error'); valid = false; }
+  else { document.getElementById('fg-alias').classList.remove('has-error'); state.aeAlias = alias; }
+
+  // Marketplace
+  state.marketplace = document.getElementById('inp-marketplace').value;
+
+  // Opportunity
+  var opp = document.getElementById('inp-opp').value.trim();
+  var oppId = extractOpportunityId(opp);
+  if (!oppId) { document.getElementById('fg-opp').classList.add('has-error'); valid = false; }
+  else { document.getElementById('fg-opp').classList.remove('has-error'); state.opportunityId = oppId; state.opportunityUrl = opp; }
+
+  // Admin emails (free text)
+  var adminInput = document.getElementById('inp-admin').value.trim();
+  var admins = adminInput.split(/[,;]/).map(function(e) { return e.trim(); }).filter(function(e) { return e.length > 0 && e.includes('@'); });
+  if (admins.length === 0) { document.getElementById('fg-admin').classList.add('has-error'); valid = false; }
+  else if (admins.length > 3) { document.getElementById('fg-admin').classList.add('has-error'); alert('Maximum 3 admin emails allowed per MLE request.'); valid = false; }
+  else { document.getElementById('fg-admin').classList.remove('has-error'); state.selectedAdmins = admins; }
+
+  // LE Names
+  var leText = document.getElementById('inp-les').value.trim();
+  var les = leText.split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
+  if (les.length === 0) { document.getElementById('fg-les').classList.add('has-error'); valid = false; }
+  else { document.getElementById('fg-les').classList.remove('has-error'); state.leNames = les; }
+
+  // PBI
+  if (state.pbiRequired === null) { document.getElementById('fg-pbi').classList.add('has-error'); valid = false; }
+  else { document.getElementById('fg-pbi').classList.remove('has-error'); }
+
+  if (!valid) return;
+
+  // Initialize LE details for step 2
+  state.leDetails = state.leNames.map(function(name) {
+    return { name: name, loc: '', netTerms: '', autoIncrease: 'Yes' };
+  });
+
+  // If PBI = No, go straight to output
+  if (!state.pbiRequired) {
+    state.step = 1; // output step
+  } else {
+    state.step = 1; // pbi step
+  }
+  render();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// STEP 2: PBI DETAILS (only when PBI = Yes)
+// ══════════════════════════════════════════════════════════════════
+function renderPBIStep(el) {
+  var recapHtml =
+    '<div class="recap-box">' +
+    '  <div class="field"><strong>Employee Alias:</strong> @' + esc(state.aeAlias) + '</div>' +
+    '  <div class="field"><strong>Marketplace:</strong> ' + state.marketplace + '</div>' +
+    '  <div class="field"><strong>Opportunity ID:</strong> ' + esc(state.opportunityId) + '</div>' +
+    '  <div class="field"><strong>Legal Entities:</strong> ' + state.leNames.length + ' LE(s)</div>' +
+    '  <div class="field"><strong>PBI Required:</strong> Yes</div>' +
+    '  <div class="field"><strong>Admin Email(s):</strong><div class="admin-pills">' +
+    state.selectedAdmins.map(function(e) { return '<span class="admin-pill">' + esc(e) + '</span>'; }).join('') +
+    '</div></div>' +
+    '</div>';
+
+  var applyAllHtml =
+    '<div class="apply-all-bar">' +
+    '  <label>⚡ Apply to All:</label>' +
+    '  <input type="text" id="applyAll-loc" placeholder="LOC Amount" style="width:120px;" />' +
+    '  <select id="applyAll-terms" style="width:110px;">' +
+    '    <option value="">Net Terms</option>' +
+    '    <option value="Net 30">Net 30</option>' +
+    '    <option value="Net 45">Net 45</option>' +
+    '    <option value="Net 60">Net 60</option>' +
+    '    <option value="Net 90">Net 90</option>' +
+    '  </select>' +
+    '  <select id="applyAll-auto" style="width:130px;">' +
+    '    <option value="">Auto Increase?</option>' +
+    '    <option value="Yes">Yes</option>' +
+    '    <option value="No">No</option>' +
+    '  </select>' +
+    '  <button class="btn btn-sm btn-primary" onclick="applyAll()">Apply All</button>' +
+    '</div>';
+
+  var tableRows = state.leDetails.map(function(le, i) {
+    return '<tr>' +
+      '<td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + esc(le.name) + '</td>' +
+      '<td><input type="text" id="loc-' + i + '" placeholder="e.g. 50000" value="' + esc(le.loc) + '" onchange="updateLE(' + i + ')" /></td>' +
+      '<td><select id="terms-' + i + '" onchange="updateLE(' + i + ')">' +
+      '  <option value=""' + (le.netTerms === '' ? ' selected' : '') + '>Select...</option>' +
+      '  <option value="Net 30"' + (le.netTerms === 'Net 30' ? ' selected' : '') + '>Net 30</option>' +
+      '  <option value="Net 45"' + (le.netTerms === 'Net 45' ? ' selected' : '') + '>Net 45</option>' +
+      '  <option value="Net 60"' + (le.netTerms === 'Net 60' ? ' selected' : '') + '>Net 60</option>' +
+      '  <option value="Net 90"' + (le.netTerms === 'Net 90' ? ' selected' : '') + '>Net 90</option>' +
+      '</select></td>' +
+      '<td><select id="auto-' + i + '" onchange="updateLE(' + i + ')">' +
+      '  <option value="Yes"' + (le.autoIncrease === 'Yes' ? ' selected' : '') + '>Yes</option>' +
+      '  <option value="No"' + (le.autoIncrease === 'No' ? ' selected' : '') + '>No</option>' +
+      '</select></td>' +
+      '</tr>';
+  }).join('');
+
+  el.innerHTML =
+    '<div class="card">' +
+    '  <h2>💳 PBI / Line of Credit Details</h2>' +
+    '  <p class="desc">Fill in the credit details for each Legal Entity. Use "Apply All" to set the same values across all LEs.</p>' +
+    recapHtml +
+    applyAllHtml +
+    '  <div style="overflow-x:auto;">' +
+    '    <table class="le-table">' +
+    '      <thead><tr><th>Legal Entity Name</th><th style="width:140px;">LOC Amount ($)</th><th style="width:120px;">Net Payment Terms</th><th style="width:130px;">Auto Increase LOC?</th></tr></thead>' +
+    '      <tbody>' + tableRows + '</tbody>' +
+    '    </table>' +
+    '  </div>' +
+    '  <div id="pbi-err" style="color:#D13212;font-size:13px;margin-top:10px;display:none;"></div>' +
+    '  <div class="footer-btns">' +
+    '    <button class="btn btn-secondary" onclick="goBack()">← Back</button>' +
+    '    <button class="btn btn-primary" onclick="submitStep2()">Generate File →</button>' +
+    '  </div>' +
+    '</div>';
+}
+
+function applyAll() {
+  var loc = document.getElementById('applyAll-loc').value.trim();
+  var terms = document.getElementById('applyAll-terms').value;
+  var auto = document.getElementById('applyAll-auto').value;
+
+  state.leDetails.forEach(function(le, i) {
+    if (loc) { le.loc = loc; document.getElementById('loc-' + i).value = loc; }
+    if (terms) { le.netTerms = terms; document.getElementById('terms-' + i).value = terms; }
+    if (auto) { le.autoIncrease = auto; document.getElementById('auto-' + i).value = auto; }
+  });
+}
+
+function updateLE(idx) {
+  state.leDetails[idx].loc = document.getElementById('loc-' + idx).value.trim();
+  state.leDetails[idx].netTerms = document.getElementById('terms-' + idx).value;
+  state.leDetails[idx].autoIncrease = document.getElementById('auto-' + idx).value;
+}
+
+function submitStep2() {
+  // Save all current values
+  state.leDetails.forEach(function(le, i) {
+    le.loc = document.getElementById('loc-' + i).value.trim();
+    le.netTerms = document.getElementById('terms-' + i).value;
+    le.autoIncrease = document.getElementById('auto-' + i).value;
+  });
+
+  // Validate: LOC and Net Terms are required when PBI = Yes
+  var missing = [];
+  state.leDetails.forEach(function(le, i) {
+    if (!le.loc) missing.push(le.name + ' — missing LOC amount');
+    if (!le.netTerms) missing.push(le.name + ' — missing Net Payment Terms');
+  });
+
+  if (missing.length > 0) {
+    var errEl = document.getElementById('pbi-err');
+    errEl.style.display = 'block';
+    errEl.innerHTML = '<strong>Please complete all fields:</strong><br>' + missing.join('<br>');
+    return;
+  }
+
+  state.step = 2; // output step
+  render();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// OUTPUT STEP
+// ══════════════════════════════════════════════════════════════════
+function renderOutputStep(el) {
+  var tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  var tomorrowStr = tomorrow.toISOString().slice(0, 10); // YYYY-MM-DD
+
+  var psrDefaults = [
+    'Opportunity__c=' + state.opportunityId,
+    'AdditionalInformation__c=' + encodeURIComponent(state.aeAlias + ' - MLE submission from builder tool'),
+    'Level_of_Sponsorship_Support__c=' + encodeURIComponent('Manager'),
+    'TargetGoLive__c=' + tomorrowStr,
+    'Customer_s_Preferred_Timezone__c=' + encodeURIComponent('PST - Pacific Standard Time - GMT -8:00'),
+    'Will_Customer_approve_Admin_Access_form__c=' + encodeURIComponent('Yes'),
+    'Type_of_Configuration__c=' + encodeURIComponent('Restructure'),
+    'Signed_Authorization_Form_on_File__c=' + encodeURIComponent('No'),
+    'ExpectedAnnualOPS__c=0',
+    'UsersAdded__c=0',
+    'Optimal_Deployment_Type__c=' + encodeURIComponent('Not Applicable'),
+    'Payment_Method__c=' + encodeURIComponent('To Be Determined'),
+    'Complex_Approval_Workflows__c=' + encodeURIComponent('No'),
+    'Complex_Group_Structure__c=' + encodeURIComponent('No'),
+    'Multiple_Legal_Entities__c=' + encodeURIComponent('Yes'),
+    'Guided_Buying_Status__c=' + encodeURIComponent('Unknown')
+  ];
+
+  var psrUrl = 'https://amazonbusiness.lightning.force.com/lightning/o/Professional_Service_Request__c/new?nooverride=1&useRecordTypeCheck=1&recordTypeId=0122K000001clMYQAY&defaultFieldValues=' + psrDefaults.join(',');
+
+  var adminEmailStr = state.selectedAdmins.join(', ');
+
+  var summaryHtml =
+    '<div class="recap-box">' +
+    '  <div class="field"><strong>Employee Alias:</strong> @' + esc(state.aeAlias) + '</div>' +
+    '  <div class="field"><strong>Marketplace:</strong> ' + state.marketplace + '</div>' +
+    '  <div class="field"><strong>Opportunity ID:</strong> ' + esc(state.opportunityId) + '</div>' +
+    '  <div class="field"><strong>Legal Entities:</strong> ' + state.leNames.length + '</div>' +
+    '  <div class="field"><strong>PBI Required:</strong> ' + (state.pbiRequired ? 'Yes' : 'No') + '</div>' +
+    '  <div class="field"><strong>Admin Email(s):</strong> ' + esc(adminEmailStr) + '</div>' +
+    '</div>';
+
+  el.innerHTML =
+    '<div class="card output-card">' +
+    '  <h2>✅ MLE Request Ready</h2>' +
+    '  <p>Your MLE Request Form has been generated. Download it and create a PSR to submit.</p>' +
+    summaryHtml +
+    '  <div class="output-actions">' +
+    '    <button class="btn btn-success" onclick="downloadTemplate()">📥 Download MLE Request Form (.xlsx)</button>' +
+    '  </div>' +
+    '  <div class="psr-link-box">' +
+    '    <p style="margin-bottom:8px;font-weight:600;">📌 Next Step: Create a PSR</p>' +
+    '    <p style="font-size:13px;color:#555;margin-bottom:8px;">Click the link below to open the PSR creation form with the Opportunity pre-filled:</p>' +
+    '    <a href="' + psrUrl + '" target="_blank">' + psrUrl + '</a>' +
+    '    <div style="margin-top:10px;"><button class="btn btn-sm btn-primary" onclick="copyPSRLink()">📋 Copy PSR Link</button></div>' +
+    '  </div>' +
+    '  <div class="info-banner" style="margin-top:20px;">' +
+    '    <div class="icon">📎</div>' +
+    '    <div><strong>Attach the downloaded .xlsx file to the PSR.</strong> The MLE Request Form contains all the information needed for ProServe to process your request without follow-ups.</div>' +
+    '  </div>' +
+    '  <div class="footer-btns" style="border-top:none;margin-top:16px;">' +
+    '    <button class="btn btn-secondary" onclick="goBack()">← Back</button>' +
+    '    <button class="btn btn-secondary" onclick="startOver()">↺ Start Over</button>' +
+    '  </div>' +
+    '</div>';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// EXCEL GENERATION
+// ══════════════════════════════════════════════════════════════════
+function downloadTemplate() {
+  var wb = XLSX.utils.book_new();
+
+  // Build rows matching the template format
+  var rows = [];
+  // Row 1: blank
+  rows.push(['', '', 'AB MLE Request Form']);
+  // Row 2: blank
+  rows.push([]);
+  // Row 3: BAID
+  rows.push(['', '', 'SalesForce Business Account ID:', state.baid || state.opportunityId]);
+  // Row 4: AE alias
+  rows.push(['', '', 'Account Executive alias', state.aeAlias]);
+  // Row 5: Header row
+  rows.push(['', '', 'Name of Legal Entity (LE) (Max:350) *', 'Admin email address** and ***', 'PBI required for LE?', 'Line of Credit (LOC) amount', 'Net Payment Term', 'Eligible to auto increase LOC?', 'Marketplace']);
+
+  // Data rows
+  var adminStr = state.selectedAdmins.join(', ');
+  var pbiStr = state.pbiRequired ? 'Y' : 'N';
+  var mktMap = { 'US': 'US', 'CA': 'CA', 'MX': 'MX' };
+  var mktStr = mktMap[state.marketplace] || state.marketplace;
+
+  if (state.pbiRequired) {
+    state.leDetails.forEach(function(le) {
+      var locVal = le.loc ? '$' + Number(le.loc.replace(/[^0-9.]/g, '')).toLocaleString() : '';
+      rows.push(['', '', le.name, adminStr, pbiStr, locVal, le.netTerms, le.autoIncrease, mktStr]);
+    });
+  } else {
+    state.leNames.forEach(function(name) {
+      rows.push(['', '', name, adminStr, pbiStr, '', '', '', mktStr]);
+    });
+  }
+
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Column widths
+  ws['!cols'] = [
+    { wch: 3 }, { wch: 3 }, { wch: 40 }, { wch: 35 }, { wch: 18 },
+    { wch: 22 }, { wch: 18 }, { wch: 25 }, { wch: 18 }
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+
+  var fileName = 'MLE_Request_' + state.aeAlias + '_' + state.marketplace + '_' + new Date().toISOString().slice(0,10) + '.xlsx';
+  XLSX.writeFile(wb, fileName);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════════
+function goBack() {
+  if (state.step > 0) state.step--;
+  render();
+}
+
+function startOver() {
+  state = { step: 0, aeAlias: '', marketplace: 'US', opportunityId: '', opportunityUrl: '', leNames: [], pbiRequired: null, selectedAdmins: [], accountName: '', baid: '', leDetails: [] };
+  render();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════
+function extractOpportunityId(input) {
+  if (!input) return null;
+  // Match from URL: /Opportunity/006XXXXXXXXXXXXXXX/
+  var urlMatch = input.match(/Opportunity\/([a-zA-Z0-9]{15,18})/);
+  if (urlMatch) return urlMatch[1];
+  // Match raw 15 or 18 char ID starting with 006
+  var rawMatch = input.match(/^(006[a-zA-Z0-9]{12,15})$/);
+  if (rawMatch) return rawMatch[1];
+  return null;
+}
+
+function esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function copyPSRLink() {
+  var tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  var tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+  var psrDefaults = [
+    'Opportunity__c=' + state.opportunityId,
+    'AdditionalInformation__c=' + encodeURIComponent(state.aeAlias + ' - MLE submission from builder tool'),
+    'Level_of_Sponsorship_Support__c=' + encodeURIComponent('Manager'),
+    'TargetGoLive__c=' + tomorrowStr,
+    'Will_Customer_approve_Admin_Access_form__c=' + encodeURIComponent('Yes'),
+    'Type_of_Configuration__c=' + encodeURIComponent('Restructure'),
+    'Signed_Authorization_Form_on_File__c=' + encodeURIComponent('Yes'),
+    'ExpectedAnnualOPS__c=0',
+    'UsersAdded__c=0',
+    'Optimal_Deployment_Type__c=' + encodeURIComponent('Not Applicable'),
+    'Payment_Method__c=' + encodeURIComponent('To Be Determined'),
+    'Complex_Approval_Workflows__c=' + encodeURIComponent('No'),
+    'Complex_Group_Structure__c=' + encodeURIComponent('No'),
+    'Multiple_Legal_Entities__c=' + encodeURIComponent('Yes'),
+    'Guided_Buying_Status__c=' + encodeURIComponent('Unknown')
+  ];
+
+  var url = 'https://amazonbusiness.lightning.force.com/lightning/o/Professional_Service_Request__c/new?nooverride=1&useRecordTypeCheck=1&recordTypeId=0122K000001clMYQAY&defaultFieldValues=' + psrDefaults.join(',');
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(function() {
+      event.target.textContent = '✓ Copied!';
+      setTimeout(function() { event.target.textContent = '📋 Copy PSR Link'; }, 2000);
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// KIRO INTEGRATION API (optional — for automated workflows)
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * Set account info if available (e.g., from a Kiro lookup)
+ */
+function setAccountInfo(info) {
+  if (info.accountName) state.accountName = info.accountName;
+  if (info.baid) state.baid = info.baid;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
